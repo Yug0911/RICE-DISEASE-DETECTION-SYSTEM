@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.env
+.venv
+env/
+venv/
+*.h5
+*.jpg
+*.jpeg
+*.png
+*.db
+.DS_Store
+Thumbs.db
+models/*.h5
+results/*.png
