@@ -1,0 +1,42 @@
+{
+  "classes": [
+    "Brownspot",
+    "Bacterialblight",
+    "Leafsmut",
+    "Healthy",
+    "Rice Blast"
+  ],
+  "splits": {
+    "train": 0.7,
+    "val": 0.15,
+    "test": 0.15
+  },
+  "stats": {
+    "Brownspot": {
+      "train": 1134,
+      "val": 243,
+      "test": 243
+    },
+    "Bacterialblight": {
+      "train": 1122,
+      "val": 240,
+      "test": 242
+    },
+    "Leafsmut": {
+      "train": 1021,
+      "val": 219,
+      "test": 220
+    },
+    "Healthy": {
+      "train": 422,
+      "val": 90,
+      "test": 91
+    },
+    "Rice Blast": {
+      "train": 487,
+      "val": 104,
+      "test": 105
+    }
+  },
+  "total": 5983
+}

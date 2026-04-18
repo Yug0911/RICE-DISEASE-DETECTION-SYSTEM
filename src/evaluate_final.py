@@ -13,9 +13,9 @@ from tensorflow.keras.models import load_model
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
 
 
-MODEL_PATH = "models/best_rice_disease.h5"
-TEST_DIR = "Rice Dataset/Original Dataset"
-IMG_SIZE = (224, 224)
+MODEL_PATH = "models/rice_disease_7class_final.h5"
+TEST_DIR = "Rice Dataset/Processed_7class/test"
+IMG_SIZE = (300, 300)
 RESULTS_DIR = "results"
 
 
