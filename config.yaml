@@ -1,0 +1,7 @@
+title: Rice Leaf Disease Detection
+description: AI-powered rice leaf disease detection system with 95.23% accuracy
+emoji: 🌾
+colorFrom: green
+colorTo: darkgreen
+sdk: docker
+app_port: 8080

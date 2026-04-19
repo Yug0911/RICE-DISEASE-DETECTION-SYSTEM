@@ -1,6 +1,6 @@
 """
-Rice Leaf Disease Detection - Web Demo (Flask)
-Upload an image via browser and get prediction
+Rice Leaf Disease Detection - Professional Web Application
+A clean, professional interface for crop disease detection
 """
 import os
 import numpy as np
@@ -13,102 +13,517 @@ from flask import Flask, request, render_template_string, jsonify
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras.applications.efficientnet import preprocess_input
 from PIL import Image
-import base64
 from io import BytesIO
 
 app = Flask(__name__)
 
-# Load model
 print("Loading model...")
 model = tf.keras.models.load_model("models/best_5class.h5")
 CLASS_NAMES = ['Bacterialblight', 'Brownspot', 'Healthy', 'Leafsmut', 'Rice Blast']
 IMG_SIZE = (300, 300)
-print("Model loaded. Starting web server...")
+print("Model loaded. Starting server...")
 
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Rice Leaf Disease Detection</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RiceScan - Disease Detection System</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=Playfair+Display:wght@500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: Arial, sans-serif; max-width: 800px; margin: 40px auto; padding: 20px; background: #f5f5f5; }
-        .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #2c7a7b; text-align: center; }
-        .upload-area { border: 2px dashed #4299e1; padding: 40px; text-align: center; margin: 20px 0; border-radius: 10px; cursor: pointer; }
-        .upload-area:hover { background: #ebf8ff; }
-        input[type="file"] { display: none; }
-        button { background: #4299e1; color: white; padding: 12px 30px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; }
-        button:hover { background: #3182ce; }
-        .preview { max-width: 400px; display: block; margin: 20px auto; border-radius: 5px; }
-        .result { margin-top: 20px; padding: 20px; background: #f0fff4; border-radius: 5px; border-left: 4px solid #2c7a7b; }
-        .prediction { font-size: 24px; font-weight: bold; color: #2c7a7b; }
-        .confidence { font-size: 18px; color: #666; margin-top: 5px; }
-        .prob-list { margin-top: 15px; }
-        .prob-item { display: flex; align-items: center; margin: 8px 0; }
-        .prob-bar { height: 20px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-left: 10px; }
-        .prob-fill { height: 100%; background: linear-gradient(90deg, #4299e1, #2c7a7b); }
-        .prob-label { width: 150px; font-weight: bold; }
-        .stats { text-align: center; color: #666; font-size: 12px; margin-top: 30px; }
+        :root {
+            --black: #0a0a0a;
+            --dark: #141414;
+            --dark-gray: #1f1f1f;
+            --gray: #2a2a2a;
+            --light-gray: #666666;
+            --off-white: #f5f5f5;
+            --white: #ffffff;
+            --green: #2d5a27;
+            --green-light: #4a7c44;
+            --cream: #faf9f6;
+            --brown: #5c4033;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--cream);
+            color: var(--black);
+            line-height: 1.6;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: var(--white);
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+            padding: 20px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .header-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .logo-mark {
+            width: 36px;
+            height: 36px;
+            background: var(--green);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 18px;
+        }
+        
+        .logo-text {
+            font-family: 'Playfair Display', serif;
+            font-size: 22px;
+            font-weight: 600;
+            color: var(--black);
+            letter-spacing: -0.5px;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+        
+        .nav-links a {
+            text-decoration: none;
+            color: var(--light-gray);
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        
+        .nav-links a:hover {
+            color: var(--black);
+        }
+        
+        .hero {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 60px 30px 40px;
+            text-align: center;
+        }
+        
+        .hero h1 {
+            font-family: 'Playfair Display', serif;
+            font-size: 48px;
+            font-weight: 600;
+            color: var(--black);
+            line-height: 1.2;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+        
+        .hero p {
+            font-size: 17px;
+            color: var(--light-gray);
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        .main-card {
+            max-width: 700px;
+            margin: 0 auto 60px;
+            padding: 0 30px;
+        }
+        
+        .upload-card {
+            background: var(--white);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 16px;
+            padding: 40px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+        }
+        
+        .upload-area {
+            border: 2px dashed rgba(0,0,0,0.15);
+            border-radius: 12px;
+            padding: 50px 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            background: var(--cream);
+        }
+        
+        .upload-area:hover {
+            border-color: var(--green);
+            background: #f8f7f4;
+        }
+        
+        .upload-icon {
+            width: 56px;
+            height: 56px;
+            margin: 0 auto 16px;
+            background: var(--dark);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .upload-icon svg {
+            width: 24px;
+            height: 24px;
+            stroke: var(--white);
+        }
+        
+        .upload-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--black);
+            margin-bottom: 4px;
+        }
+        
+        .upload-sub {
+            font-size: 14px;
+            color: var(--light-gray);
+        }
+        
+        input[type="file"] {
+            display: none;
+        }
+        
+        .analyze-btn {
+            display: block;
+            width: 100%;
+            background: var(--green);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            font-family: inherit;
+            margin-top: 20px;
+        }
+        
+        .analyze-btn:hover:not(:disabled) {
+            background: var(--green-light);
+            transform: translateY(-1px);
+        }
+        
+        .analyze-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .preview-container {
+            display: none;
+            margin-top: 24px;
+        }
+        
+        .preview-img {
+            width: 100%;
+            border-radius: 12px;
+        }
+        
+        .result-card {
+            display: none;
+            margin-top: 24px;
+            background: var(--dark);
+            border-radius: 14px;
+            padding: 28px;
+            color: var(--white);
+        }
+        
+        .result-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+        
+        .result-label {
+            font-size: 12px;
+            color: rgba(255,255,255,0.5);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+        
+        .result-disease {
+            font-size: 28px;
+            font-weight: 600;
+            font-family: 'Playfair Display', serif;
+        }
+        
+        .result-confidence {
+            text-align: right;
+        }
+        
+        .confidence-num {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--green-light);
+        }
+        
+        .confidence-suffix {
+            font-size: 18px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .result-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.15);
+            margin: 20px 0;
+        }
+        
+        .prob-title {
+            font-size: 11px;
+            color: rgba(255,255,255,0.4);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 14px;
+        }
+        
+        .prob-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .prob-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .prob-name {
+            width: 110px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .prob-bar-bg {
+            flex: 1;
+            height: 6px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .prob-bar-fill {
+            height: 100%;
+            background: var(--green-light);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .prob-pct {
+            width: 45px;
+            text-align: right;
+            font-size: 13px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+        }
+        
+        .footer {
+            background: var(--dark);
+            color: var(--white);
+            padding: 40px 30px;
+            text-align: center;
+        }
+        
+        .footer-inner {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer-brand {
+            font-family: 'Playfair Display', serif;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        
+        .footer-text {
+            font-size: 14px;
+            color: rgba(255,255,255,0.5);
+        }
+        
+        .footer-divider {
+            height: 1px;
+            background: rgba(255,255,255,0.1);
+            margin: 30px 0;
+        }
+        
+        .footer-info {
+            display: flex;
+            justify-content: center;
+            gap: 24px;
+            font-size: 13px;
+            color: rgba(255,255,255,0.4);
+        }
+        
+        @media (max-width: 600px) {
+            .hero h1 {
+                font-size: 32px;
+            }
+            
+            .nav-links {
+                display: none;
+            }
+            
+            .upload-card {
+                padding: 24px;
+            }
+            
+            .result-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .result-confidence {
+                text-align: left;
+            }
+            
+            .footer-info {
+                flex-direction: column;
+                gap: 8px;
+            }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🌾 Rice Leaf Disease Detection</h1>
-        <p style="text-align: center; color: #666;">Upload a rice leaf image to identify diseases</p>
-        
-        <form id="uploadForm">
-            <div class="upload-area" onclick="document.getElementById('fileInput').click()">
-                <p>📁 Click to select image or drag & drop</p>
-                <p style="font-size: 12px; color: #999;">Supports: JPG, PNG, BMP, TIFF</p>
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo">
+                <div class="logo-mark">R</div>
+                <div class="logo-text">RiceScan</div>
             </div>
-            <input type="file" id="fileInput" accept="image/*" onchange="previewImage(event)">
-            <div style="text-align: center;">
-                <button type="submit">🔍 Predict Disease</button>
+            <nav>
+                <ul class="nav-links">
+                    <li><a href="#">Home</a></li>
+                    <li><a href="#">About</a></li>
+                    <li><a href="#">Contact</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    
+    <section class="hero">
+        <h1>Detect Rice Leaf Diseases<br>Before It's Too Late</h1>
+        <p>Upload a photo of your rice leaf and our AI system will identify any diseases within seconds.</p>
+    </section>
+    
+    <div class="main-card">
+        <div class="upload-card">
+            <form id="uploadForm">
+                <label class="upload-area" for="fileInput">
+                    <div class="upload-icon">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+                        </svg>
+                    </div>
+                    <div class="upload-title">Click to upload a leaf image</div>
+                    <div class="upload-sub">JPG, PNG up to 10MB</div>
+                </label>
+                <input type="file" id="fileInput" accept="image/*">
+                
+                <button type="submit" class="analyze-btn" id="analyzeBtn" disabled>Analyze Image</button>
+            </form>
+            
+            <div class="preview-container" id="previewCont">
+                <img id="previewImg" class="preview-img" src="" alt="Preview">
             </div>
-        </form>
-        
-        <div id="previewContainer" style="text-align: center; display: none;">
-            <img id="previewImg" class="preview" src="" alt="Preview">
-        </div>
-        
-        <div id="resultContainer" class="result" style="display: none;">
-            <div class="prediction" id="prediction"></div>
-            <div class="confidence" id="confidence"></div>
-            <div class="prob-list" id="probList"></div>
-        </div>
-        
-        <div class="stats">
-            Model: EfficientNetB3 | Accuracy: 95.23% | 5 Classes (Bacterialblight, Brownspot, Healthy, Leafsmut, Rice Blast)
+            
+            <div class="result-card" id="resultCont">
+                <div class="result-header">
+                    <div>
+                        <div class="result-label">Detected Disease</div>
+                        <div class="result-disease" id="diseaseName">-</div>
+                    </div>
+                    <div class="result-confidence">
+                        <div class="result-label">Confidence</div>
+                        <div class="confidence-num" id="confidenceNum">-</div>
+                        <span class="confidence-suffix">%</span>
+                    </div>
+                </div>
+                
+                <div class="result-divider"></div>
+                
+                <div class="prob-title">All Probabilities</div>
+                <div class="prob-list" id="probList"></div>
+            </div>
         </div>
     </div>
-
+    
+    <footer class="footer">
+        <div class="footer-inner">
+            <div class="footer-brand">RiceScan</div>
+            <p class="footer-text">Helping farmers protect their crops with intelligent disease detection</p>
+            
+            <div class="footer-divider"></div>
+            
+            <div class="footer-info">
+                <span>Model: EfficientNetB3</span>
+                <span>Accuracy: 95.23%</span>
+                <span>5 Disease Classes</span>
+            </div>
+        </div>
+    </footer>
+    
     <script>
-        function previewImage(event) {
-            const file = event.target.files[0];
-            if (file) {
+        const fileInput = document.getElementById('fileInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const previewCont = document.getElementById('previewCont');
+        const previewImg = document.getElementById('previewImg');
+        const resultCont = document.getElementById('resultCont');
+        const diseaseName = document.getElementById('diseaseName');
+        const confidenceNum = document.getElementById('confidenceNum');
+        const probList = document.getElementById('probList');
+        
+        fileInput.addEventListener('change', function(e) {
+            if (this.files && this.files[0]) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
-                    document.getElementById('previewImg').src = e.target.result;
-                    document.getElementById('previewContainer').style.display = 'block';
+                    previewImg.src = e.target.result;
+                    previewCont.style.display = 'block';
+                    analyzeBtn.disabled = false;
+                    resultCont.style.display = 'none';
                 };
-                reader.readAsDataURL(file);
+                reader.readAsDataURL(this.files[0]);
             }
-        }
+        });
         
         document.getElementById('uploadForm').addEventListener('submit', async function(e) {
             e.preventDefault();
-            const fileInput = document.getElementById('fileInput');
-            if (!fileInput.files[0]) {
-                alert('Please select an image first');
-                return;
-            }
+            if (!fileInput.files[0]) return;
+            
+            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Analyzing...';
             
             const formData = new FormData();
             formData.append('image', fileInput.files[0]);
-            
-            const btn = document.querySelector('button');
-            btn.textContent = '⏳ Processing...';
-            btn.disabled = true;
             
             try {
                 const response = await fetch('/predict', {
@@ -117,26 +532,38 @@ HTML_TEMPLATE = '''
                 });
                 const data = await response.json();
                 
-                document.getElementById('prediction').textContent = `Prediction: ${data.prediction}`;
-                document.getElementById('confidence').textContent = `Confidence: ${data.confidence.toFixed(1)}%`;
-                
-                let probsHTML = '';
-                for (let [cls, prob] of Object.entries(data.all_probabilities)) {
-                    const pct = (prob * 100).toFixed(1);
-                    probsHTML += `
-                        <div class="prob-item">
-                            <span class="prob-label">${cls}</span>
-                            <div class="prob-bar"><div class="prob-fill" style="width: ${pct}%"></div></div>
-                            <span>${pct}%</span>
-                        </div>`;
+                if (data.error) {
+                    alert('Error: ' + data.error);
+                    return;
                 }
-                document.getElementById('probList').innerHTML = probsHTML;
-                document.getElementById('resultContainer').style.display = 'block';
+                
+                diseaseName.textContent = data.prediction;
+                confidenceNum.textContent = data.confidence.toFixed(1);
+                
+                const probs = Object.entries(data.all_probabilities)
+                    .sort((a, b) => b[1] - a[1]);
+                
+                let probHTML = '';
+                probs.forEach(([cls, prob]) => {
+                    const pct = (prob * 100).toFixed(1);
+                    probHTML += `
+                        <div class="prob-row">
+                            <div class="prob-name">${cls}</div>
+                            <div class="prob-bar-bg">
+                                <div class="prob-bar-fill" style="width: ${pct}%"></div>
+                            </div>
+                            <div class="prob-pct">${pct}%</div>
+                        </div>`;
+                });
+                probList.innerHTML = probHTML;
+                resultCont.style.display = 'block';
+                
+                resultCont.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
             } catch (err) {
                 alert('Error: ' + err.message);
             } finally {
-                btn.textContent = '🔍 Predict Disease';
-                btn.disabled = false;
+                analyzeBtn.disabled = false;
+                analyzeBtn.textContent = 'Analyze Image';
             }
         });
     </script>
@@ -157,7 +584,6 @@ def predict():
     if file.filename == '':
         return jsonify({'error': 'No image selected'}), 400
     
-    # Read and preprocess
     img = Image.open(BytesIO(file.read()))
     img = img.convert('RGB')
     img = img.resize(IMG_SIZE)
@@ -165,7 +591,6 @@ def predict():
     img_array = np.expand_dims(img_array, axis=0)
     img_array = preprocess_input(img_array)
     
-    # Predict
     predictions = model.predict(img_array, verbose=0)[0]
     predicted_idx = np.argmax(predictions)
     
@@ -177,10 +602,9 @@ def predict():
     return jsonify(result)
 
 if __name__ == '__main__':
-    print("\n" + "="*50)
-    print("Rice Leaf Disease Detection - Web Demo")
-    print("="*50)
-    print("Open browser to: http://127.0.0.1:5000")
-    print("Press Ctrl+C to stop")
-    print("="*50 + "\n")
+    print("\n" + "="*40)
+    print("RiceScan - Disease Detection System")
+    print("="*40)
+    print("Open http://127.0.0.1:5000")
+    print("="*40 + "\n")
     app.run(debug=True, port=5000)
