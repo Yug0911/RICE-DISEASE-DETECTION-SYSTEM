@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+.git/
+.gitignore
+*.md
+Rice Dataset/
+logs/
+*.ipynb_checkpoints/
+results/
+src/__pycache__/
